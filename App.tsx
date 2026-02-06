@@ -38,8 +38,9 @@ const App = () => {
           t.id === newTransaction.id ? { ...t, status: 'synced' } : t
         ));
       } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
         setTransactions(prev => prev.map(t => 
-          t.id === newTransaction.id ? { ...t, status: 'failed', syncError: (err as Error).message } : t
+          t.id === newTransaction.id ? { ...t, status: 'failed', syncError: errorMessage } : t
         ));
       }
     }
@@ -47,12 +48,15 @@ const App = () => {
 
   // Effect: Manage Capacitor SMS Listener
   useEffect(() => {
+    // Clean up function to ensure we don't have dangling listeners
     if (isListening) {
       startSmsListener(handleIncomingSms);
     } else {
       stopSmsListener();
     }
-    return () => stopSmsListener();
+    return () => {
+      stopSmsListener();
+    };
   }, [isListening, handleIncomingSms]);
 
   // Handler: Manual Retry
@@ -64,8 +68,9 @@ const App = () => {
         tr.id === t.id ? { ...tr, status: 'synced' } : tr
       ));
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       setTransactions(prev => prev.map(tr => 
-        tr.id === t.id ? { ...tr, status: 'failed' } : tr
+        tr.id === t.id ? { ...tr, status: 'failed', syncError: errorMessage } : tr
       ));
     }
   };
