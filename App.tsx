@@ -70,30 +70,6 @@ const App = () => {
     }
   };
 
-  // Handler: Update (used by AI Fix)
-  const handleUpdate = useCallback(async (id: string, updates: Partial<Transaction>) => {
-     setTransactions(prev => prev.map(t => {
-       if (t.id !== id) return t;
-       return { ...t, ...updates };
-     }));
-
-     // If we updated TrxID, try syncing immediately
-     const updatedTx = transactions.find(t => t.id === id);
-     if (updatedTx && updates.trxId) {
-        const toSync = { ...updatedTx, ...updates } as Transaction;
-        try {
-          await syncTransactionToFirebase(toSync);
-           setTransactions(prev => prev.map(tr => 
-            tr.id === id ? { ...tr, status: 'synced' } : tr
-          ));
-        } catch(e) {
-           setTransactions(prev => prev.map(tr => 
-            tr.id === id ? { ...tr, status: 'failed' } : tr
-          ));
-        }
-     }
-  }, [transactions]);
-
   const handleDelete = (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
@@ -163,7 +139,6 @@ const App = () => {
                 key={t.id} 
                 transaction={t} 
                 onRetry={handleRetry}
-                onUpdate={handleUpdate}
                 onDelete={handleDelete}
               />
             ))

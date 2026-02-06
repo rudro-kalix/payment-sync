@@ -1,39 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Transaction, PaymentProvider } from '../types';
-import { CheckCircle, AlertCircle, RefreshCw, Wand2, Copy, Trash2 } from 'lucide-react';
-import { analyzeSmsWithGemini } from '../services/geminiService';
+import { CheckCircle, AlertCircle, RefreshCw, Copy, Trash2 } from 'lucide-react';
 
 interface Props {
   transaction: Transaction;
   onRetry: (t: Transaction) => void;
-  onUpdate: (id: string, updates: Partial<Transaction>) => void;
   onDelete: (id: string) => void;
 }
 
-const TransactionCard: React.FC<Props> = ({ transaction, onRetry, onUpdate, onDelete }) => {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
+const TransactionCard: React.FC<Props> = ({ transaction, onRetry, onDelete }) => {
   const getProviderColor = (p: PaymentProvider) => {
     switch (p) {
       case PaymentProvider.BKASH: return 'text-pink-500 bg-pink-500/10 border-pink-500/20';
       case PaymentProvider.NAGAD: return 'text-orange-500 bg-orange-500/10 border-orange-500/20';
       case PaymentProvider.ROCKET: return 'text-purple-500 bg-purple-500/10 border-purple-500/20';
       default: return 'text-slate-400 bg-slate-800 border-slate-700';
-    }
-  };
-
-  const handleAiAnalysis = async () => {
-    setIsAnalyzing(true);
-    const result = await analyzeSmsWithGemini(transaction.rawSms);
-    setIsAnalyzing(false);
-    
-    if (result) {
-      onUpdate(transaction.id, {
-        ...result,
-        status: 'pending', // Reset to pending to try syncing again
-        isAiParsed: true,
-        syncError: undefined
-      });
     }
   };
 
@@ -121,18 +102,6 @@ const TransactionCard: React.FC<Props> = ({ transaction, onRetry, onUpdate, onDe
             </button>
           )}
 
-          {/* AI Magic Fix Button */}
-          {(!transaction.trxId || transaction.status === 'manual_review') && (
-            <button
-              onClick={handleAiAnalysis}
-              disabled={isAnalyzing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
-            >
-              <Wand2 className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
-              {isAnalyzing ? 'Analyzing...' : 'AI Fix'}
-            </button>
-          )}
-
            <button 
               onClick={() => onDelete(transaction.id)}
               className="p-2 hover:bg-red-900/30 rounded-full text-slate-500 hover:text-red-400 transition-colors"
@@ -142,12 +111,6 @@ const TransactionCard: React.FC<Props> = ({ transaction, onRetry, onUpdate, onDe
             </button>
         </div>
       </div>
-      
-      {transaction.isAiParsed && (
-         <div className="absolute top-0 right-0 p-1">
-           <div className="w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
-         </div>
-      )}
     </div>
   );
 };

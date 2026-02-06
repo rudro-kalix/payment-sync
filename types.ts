@@ -15,7 +15,6 @@ export interface Transaction {
   timestamp: number;
   status: 'pending' | 'synced' | 'failed' | 'manual_review';
   syncError?: string;
-  isAiParsed?: boolean;
 }
 
 export interface ParsedData {
