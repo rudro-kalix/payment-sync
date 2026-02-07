@@ -1,22 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Transaction, PaymentProvider } from './types';
 import { MOCK_SMS_MESSAGES } from './constants';
-import { parseMessage } from './services/messageParser'; // Changed from smsParser
+import { parseMessage } from './services/messageParser';
 import { syncTransactionToFirebase } from './services/firebaseService';
-// We now import the notification listener instead of SMS listener
 import { startNotificationListener, stopNotificationListener, NotificationEvent } from './services/notificationListener';
 import Header from './components/Header';
 import TransactionCard from './components/TransactionCard';
 import { Plus, Bell, Search } from 'lucide-react';
-
-// Approved Package Names (Optional: Filter to only listen to these apps)
-// In real use, you might just parse everything and see what matches regex.
-const PAYMENT_APPS = [
-  'com.bKash.customerapp',
-  'com.konasl.nagad',
-  'com.dbbl.rocket',
-  // Add others as needed
-];
 
 const App = () => {
   const [isListening, setIsListening] = useState<boolean>(false);
@@ -25,23 +15,19 @@ const App = () => {
 
   // Core Logic: Process an incoming Notification
   const handleIncomingNotification = useCallback(async (event: NotificationEvent) => {
-    // Combine Title and Text for better Regex matching
-    // Example: Title: "bKash", Text: "You have received..."
     const fullMessage = `${event.title} ${event.text}`;
     
     // 1. Parse locally
     const parsed = parseMessage(fullMessage, event.title);
     
-    // If it's just a random notification (like WhatsApp), parsed.provider will likely be UNKNOWN.
-    // We only want to process it if we detected a provider or a TrxID.
     if (parsed.provider === PaymentProvider.UNKNOWN && !parsed.trxId) {
-       return; // Ignore irrelevant notifications
+       return; 
     }
 
     // 2. Create Transaction Object
     const newTransaction: Transaction = {
       id: crypto.randomUUID(),
-      rawSms: fullMessage, // Storing combined notification text in rawSms field
+      rawSms: fullMessage, 
       ...parsed,
       timestamp: Date.now(),
       status: parsed.trxId ? 'pending' : 'manual_review',
@@ -66,16 +52,30 @@ const App = () => {
     }
   }, []);
 
-  // Effect: Manage Notification Listener
-  useEffect(() => {
+  // Toggle Handler
+  const toggleListening = async () => {
     if (isListening) {
-      startNotificationListener(handleIncomingNotification);
-    } else {
+      // Stop
       stopNotificationListener();
+      setIsListening(false);
+    } else {
+      // Start - Check permissions first
+      const success = await startNotificationListener(handleIncomingNotification);
+      if (success) {
+        setIsListening(true);
+      } else {
+        // Permission denied or plugin missing - stay in 'paused' state
+        setIsListening(false);
+      }
     }
-    // Cleanup not strictly necessary for this singleton service structure 
-    // but good practice if we had a disconnect method
-  }, [isListening, handleIncomingNotification]);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopNotificationListener();
+    };
+  }, []);
 
   // Handler: Manual Retry
   const handleRetry = async (t: Transaction) => {
@@ -100,7 +100,6 @@ const App = () => {
   // Simulation for Demo
   const simulateNotification = () => {
     const randomMsg = MOCK_SMS_MESSAGES[Math.floor(Math.random() * MOCK_SMS_MESSAGES.length)];
-    // Mocking a notification event structure
     handleIncomingNotification({
         package: 'com.bKash.customerapp',
         title: 'bKash',
@@ -117,7 +116,8 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 pb-20">
-      <Header isListening={isListening} toggleListening={() => setIsListening(!isListening)} />
+      {/* Pass the new toggleListening which handles async permission check */}
+      <Header isListening={isListening} toggleListening={toggleListening} />
 
       <main className="max-w-2xl mx-auto p-4">
         
