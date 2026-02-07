@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Radio } from 'lucide-react';
+import { Activity, Bell, BellOff } from 'lucide-react';
 
 interface HeaderProps {
   isListening: boolean;
@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ isListening, toggleListening }) => {
           </div>
           <div>
             <h1 className="font-bold text-lg leading-tight">PaySync</h1>
-            <p className="text-xs text-slate-400">Merchant Verifier</p>
+            <p className="text-xs text-slate-400">Notification Verifier</p>
           </div>
         </div>
         
@@ -34,12 +34,12 @@ const Header: React.FC<HeaderProps> = ({ isListening, toggleListening }) => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
               </span>
-              Listening
+              Monitoring
             </>
           ) : (
             <>
-              <Radio className="w-4 h-4" />
-              Stopped
+              <BellOff className="w-4 h-4" />
+              Paused
             </>
           )}
         </button>

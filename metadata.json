@@ -1,5 +1,5 @@
 {
   "name": "PaySync Verifier",
-  "description": "SMS Payment Transaction Reader & Firebase Sync",
+  "description": "Notification Payment Reader & Firebase Sync",
   "requestFramePermissions": []
 }

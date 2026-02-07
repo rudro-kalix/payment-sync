@@ -1,27 +1,47 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Transaction, PaymentProvider } from './types';
 import { MOCK_SMS_MESSAGES } from './constants';
-import { parseSms } from './services/smsParser';
+import { parseMessage } from './services/messageParser'; // Changed from smsParser
 import { syncTransactionToFirebase } from './services/firebaseService';
-import { startSmsListener, stopSmsListener } from './services/capacitorSmsListener';
+// We now import the notification listener instead of SMS listener
+import { startNotificationListener, stopNotificationListener, NotificationEvent } from './services/notificationListener';
 import Header from './components/Header';
 import TransactionCard from './components/TransactionCard';
-import { Plus, Smartphone, Search } from 'lucide-react';
+import { Plus, Bell, Search } from 'lucide-react';
+
+// Approved Package Names (Optional: Filter to only listen to these apps)
+// In real use, you might just parse everything and see what matches regex.
+const PAYMENT_APPS = [
+  'com.bKash.customerapp',
+  'com.konasl.nagad',
+  'com.dbbl.rocket',
+  // Add others as needed
+];
 
 const App = () => {
   const [isListening, setIsListening] = useState<boolean>(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<'all' | 'failed' | 'synced'>('all');
 
-  // Core Logic: Process an incoming SMS string
-  const handleIncomingSms = useCallback(async (smsText: string) => {
-    // 1. Parse locally
-    const parsed = parseSms(smsText);
+  // Core Logic: Process an incoming Notification
+  const handleIncomingNotification = useCallback(async (event: NotificationEvent) => {
+    // Combine Title and Text for better Regex matching
+    // Example: Title: "bKash", Text: "You have received..."
+    const fullMessage = `${event.title} ${event.text}`;
     
+    // 1. Parse locally
+    const parsed = parseMessage(fullMessage, event.title);
+    
+    // If it's just a random notification (like WhatsApp), parsed.provider will likely be UNKNOWN.
+    // We only want to process it if we detected a provider or a TrxID.
+    if (parsed.provider === PaymentProvider.UNKNOWN && !parsed.trxId) {
+       return; // Ignore irrelevant notifications
+    }
+
     // 2. Create Transaction Object
     const newTransaction: Transaction = {
       id: crypto.randomUUID(),
-      rawSms: smsText,
+      rawSms: fullMessage, // Storing combined notification text in rawSms field
       ...parsed,
       timestamp: Date.now(),
       status: parsed.trxId ? 'pending' : 'manual_review',
@@ -46,18 +66,16 @@ const App = () => {
     }
   }, []);
 
-  // Effect: Manage Capacitor SMS Listener
+  // Effect: Manage Notification Listener
   useEffect(() => {
-    // Clean up function to ensure we don't have dangling listeners
     if (isListening) {
-      startSmsListener(handleIncomingSms);
+      startNotificationListener(handleIncomingNotification);
     } else {
-      stopSmsListener();
+      stopNotificationListener();
     }
-    return () => {
-      stopSmsListener();
-    };
-  }, [isListening, handleIncomingSms]);
+    // Cleanup not strictly necessary for this singleton service structure 
+    // but good practice if we had a disconnect method
+  }, [isListening, handleIncomingNotification]);
 
   // Handler: Manual Retry
   const handleRetry = async (t: Transaction) => {
@@ -80,9 +98,15 @@ const App = () => {
   };
 
   // Simulation for Demo
-  const simulateSms = () => {
+  const simulateNotification = () => {
     const randomMsg = MOCK_SMS_MESSAGES[Math.floor(Math.random() * MOCK_SMS_MESSAGES.length)];
-    handleIncomingSms(randomMsg);
+    // Mocking a notification event structure
+    handleIncomingNotification({
+        package: 'com.bKash.customerapp',
+        title: 'bKash',
+        text: randomMsg,
+        ticker: 'New bKash payment'
+    });
   };
 
   const filteredTransactions = transactions.filter(t => {
@@ -98,14 +122,14 @@ const App = () => {
       <main className="max-w-2xl mx-auto p-4">
         
         {/* Simulation Bar (Dev Only) */}
-        <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-blue-300 text-sm">
-            <Smartphone className="w-4 h-4" />
-            <span>Developer Mode: Simulate Incoming SMS</span>
+        <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-purple-300 text-sm">
+            <Bell className="w-4 h-4" />
+            <span>Developer Mode: Simulate Notification</span>
           </div>
           <button 
-            onClick={simulateSms}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-md transition-colors"
+            onClick={simulateNotification}
+            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-md transition-colors"
           >
             Simulate
           </button>
@@ -136,7 +160,7 @@ const App = () => {
                 <Search className="w-8 h-8 text-slate-500" />
               </div>
               <p className="text-slate-400">No transactions found</p>
-              <p className="text-xs text-slate-500 mt-2">Waiting for SMS...</p>
+              <p className="text-xs text-slate-500 mt-2">Waiting for Notifications...</p>
             </div>
           ) : (
             filteredTransactions.map(t => (
