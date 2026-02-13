@@ -1,5 +1,5 @@
 {
-  "name": "PaySync Verifier",
-  "description": "Notification Payment Reader & Firebase Sync",
+  "name": "PayMonitor - Transaction Dashboard",
+  "description": "A real-time admin dashboard for monitoring mobile payment notifications from Firebase Firestore.",
   "requestFramePermissions": []
 }
